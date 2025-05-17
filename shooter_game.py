@@ -32,12 +32,12 @@ class GameSprite(sprite.Sprite):
 class Player(GameSprite):
     def __init__(self, filename, w, h, x, y, speed):
         super().__init__(filename, w, h, x, y, speed)
-        self.health = 50
+        self.health = 810
         self.is_parrying = False
-        self.parry_duration = 30
+        self.parry_duration = 90
         self.parry_timer = 0
-        self.parry_interval = 3000
-        self.last_parry_time = 0
+        self.parry_interval = 150
+        self.last_parry_time = 500
     def fire(self):
         bullet = Bullet('bullet.png', 13, 18, self.rect.centerx, self.rect.top, 8)
         bullets.add(bullet)
@@ -48,63 +48,60 @@ class Player(GameSprite):
             self.rect.x -= 10
         if keys_pressed[K_d] and self.rect.x < 630:
             self.rect.x += 10
-        
+       
         if self.is_parrying:
             current_time = time.get_ticks()
-            # print(current_time)
             if current_time - self.start_time >= 1:
                 self.parry_timer -= 1
                 self.start_time = current_time
-                print('.')
-                # current_time = pygame.time.get_ticks()
-        # if current_time - self.parry_timer > self.parry_interval:
-        #     self.parry_timer = current_time
             if self.parry_timer <= 0:
                 self.is_parrying = False
-                self.last_shot_time = time.get_ticks()
+                self.image = transform.scale(image.load('ракета1.png'), (self.rect.width,self.rect.height)) 
+                self.last_parry_time = time.get_ticks()
+
 
     def parry(self):
         if not self.is_parrying:
             self.is_parrying = True
             self.parry_timer = self.parry_duration
-            self.parry_timer = time.get_ticks()
-            
-class UfoBullet(GameSprite):
-    def shoot(self):
-        current_time = pygame.time.get_ticks()
-        if current_time - self.last_shot_time > self.shoot_interval:
-            self.last_shot_time = current_time
-         
+            self.image = transform.scale(image.load('ркаета2.png'), (self.rect.width,self.rect.height))
 class Ufo(GameSprite):
-    def __init__(self, filename, w, h, speed, x, y):
-        super().__init__(filename, w, h, speed, x, y)
+    def __init__(self, filename, w, h, x, y, speed):
+        super().__init__(filename, w, h, x, y, speed)
         self.last_shot_time = time.get_ticks()
         self.shoot_interval = 2000
         self.damage = 20
+
     def update(self):
         global lost
         self.rect.y += self.speed
         if self.rect.y >= 500:
             self.rect.y = 0
-            self.speed = randint(3,4) 
+            self.speed = randint(2,3)
             self.rect.x = randint(0, 700 - self.rect.width)
             lost += 1
-        def shoot(self):
-            current_time = time.get_ticks()
-            if current_time - self.last_shot_time > self.shoot_interval:
-                self.last_shot_time = current_time
-                enemybullet = EnemyBullet("bullet.png", 10, 30, 20, self.rect.centerx, self.rect.bottom)
-                enemybullets.add(enemybullet)
-
-
+    def shoot(self):
+        current_time = time.get_ticks()
+        if current_time - self.last_shot_time > self.shoot_interval:
+            self.last_shot_time = current_time
+            enemybullet = EnemyBullet("bullet.png", 10, 30, self.rect.centerx, self.rect.bottom, 4)
+            enemybullets.add(enemybullet)
 class Bullet(GameSprite):
     def update(self):
         self.rect.y -= self.speed
-        if self.rect.y < 0:
+        if self.rect.y <= 0:
             self.kill()
 
-bullets = sprite.Group()
-player = Player('rocket.png', 65, 65, 50, 420, 3)
+class EnemyBullet(GameSprite):
+    def __init__(self, filename, w, h, x, y, speed):
+        super().__init__(filename, w, h, x, y, speed)
+        self.bulld = 16
+    def update(self):
+        self.rect.y += self.speed
+        if self.rect.y  >= 500:
+            self.kill()
+enemybullets = sprite.Group()
+player = Player('ракета1.png', 55, 95, 50, 405, 3)
 ufo1 = Ufo('ufo.png', 70, 40, randint(5,655), 0, randint(1,2))
 ufo2 = Ufo('ufo.png', 70, 40, randint(5,655), 0, randint(1,2))
 ufo3 = Ufo('ufo.png', 70, 40, randint(5,655), 0, randint(1,2))
@@ -115,6 +112,7 @@ kills = 0
 monsters = sprite.Group()
 monsters.add(ufo1,ufo2,ufo3,ufo4,ufo5)
 menu = True
+bullets = sprite.Group()
 finish = False
 while game:
     if menu == True:
@@ -137,25 +135,40 @@ while game:
         window.blit(text_lose, (40,40))
         window.blit(text_lose1, (40,75))
         window.blit(text_lose2, (40,110))
-
         player.update()
         monsters.draw(window)
         monsters.update()
         bullets.draw(window)
         bullets.update()
         player.reset()
-        sprite_list = sprite.groupcollide(monsters, bullets, True, True)
+        for monster in monsters:
+            monster.shoot()
+        enemybullets.draw(window)
+        enemybullets.update()
+        sprite_list = sprite.spritecollide(player, enemybullets, True)
+        sprite_list2 = sprite.groupcollide(monsters, bullets, True, True)
+
         sl = sprite.spritecollide(player, monsters, True)
-        for i in sprite_list:
+        for monster in sl:
             kills += 1
             ufo1 = Ufo('ufo.png', 70, 40, randint(5,655), 0, randint(1,2))
             monsters.add(ufo1)
-        if kills >= 20:
-            fihish = True
+            if not player.is_parrying:
+                player.health -= enemy.damage 
+        for monster in sprite_list2:
+            kills += 1
+            ufo1 = Ufo('ufo.png', 70, 40, randint(5,655), 0, randint(1,2))
+            monsters.add(ufo1)
+        for enemybul in sprite_list:
+            if not player.is_parrying:
+                player.health -= enemybul.bulld
+
+        if kills >= 30:
+            finish = True
             window.blit(background, (0,0))
             window.blit(win, (230,230))
-        if lost >= 3 or player.health <= 0:
-            fihish = True
+        if lost >= 5 or player.health <= 0:
+            finish = True
             window.blit(background, (0,0))
             window.blit(lose, (230,230))
         
@@ -166,33 +179,21 @@ while game:
                 if e.button == 1:
                     player.fire()
 
-                     
                 if e.button == 3:
-                    # print('jjj')
+
                     if not player.is_parrying:
                         player.start_time = time.get_ticks()
                         current_time = time.get_ticks()
 
                         if current_time - player.last_parry_time > player.parry_interval:
-                            last_parry_time = current_time
-
+                            print('parry')
                             player.parry()
                     print(f"Player: {player.is_parrying}")
 
-        for enemy in sl:
-            ufo1 = Ufo('ufo.png', 70, 40, randint(5,655), 0, randint(3,5))
-            monsters.add(ufo1)
-            if not player.is_parrying:
-                player.health -= enemy.damage  
-                # print(f"Player Health: {player.health}")
-                # print(f"Player: {player.is_parrying}")
-            else:
-                print("Attack parried!")
 
     if finish == True and menu == False:
             for e in event.get():
                 if e.type == QUIT:
                     game = False
     clock.tick(FPS)
-    display.update()
-    
+    display.update()    
